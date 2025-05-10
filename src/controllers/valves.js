@@ -1,23 +1,9 @@
-import { valveTogle } from "../services/valves";
+import { valveTogle } from '../services/valves.js';
 
+export const valveController = async (req, res) => {
+    const params = req.body;
+    console.log('par', params);
+    const { data } = await valveTogle(params);
 
-export const valve1Controller = async (req, res) => {
-
-    const status = valveTogle(1);
-    console.log(status);
-
-    res.status(200).json({
-        message: `Users accesfuly`,
-        avatars: usersAvatarsArr,
-    });
-};
-
-export const valve2Controller = async (req, res) => {
-    const status = valveTogle(2);
-    console.log(status);
-
-    res.status(200).json({
-        message: `Users accesfuly`,
-        avatars: usersAvatarsArr,
-    });
+    res.status(200).json({ data });
 };

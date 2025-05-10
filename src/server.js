@@ -7,6 +7,7 @@ import { notFindMiddleware } from './middlewares/notFindMiddleware.js';
 import Router from './routers/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import cookieParser from 'cookie-parser';
+import { authDb } from './constants/index.js';
 
 export const setupServer = () => {
     const app = express();

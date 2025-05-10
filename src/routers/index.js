@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import valvesRouter from './valves.js';
 
 const router = Router();
 
