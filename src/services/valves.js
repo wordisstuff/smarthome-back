@@ -7,3 +7,8 @@ export const valveTogle = async params => {
         `/valve${params.relay}?state=${params.state}&token=${authDb.secret}`,
     );
 };
+export const valveStatus = async () => {
+    return await valvesApi.get(
+        `/status?token=${authDb.secret}`,
+    );
+};
