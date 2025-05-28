@@ -1,4 +1,4 @@
-import { authDb } from '../constants';
+import { authDb } from '../constants.js';
 
 export const homeController = async (req, res) => {
     res.status(200).json({});
