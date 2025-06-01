@@ -12,11 +12,11 @@ export const sensorsController = async (req, res) => {
         soil_status === 'dry',
         soil_status === 'wet' || soil_status === 'in_water',
     );
-    if (soil_status === 'dry') {
-        await valveTogle({ relay: 1, state: true });
-    }
-    if (soil_status === 'wet' || soil_status === 'in_water') {
-        await valveTogle({ relay: 1, state: false });
-    }
+    // if (soil_status === 'dry') {
+    //     await valveTogle({ relay: 1, state: true });
+    // }
+    // if (soil_status === 'wet' || soil_status === 'in_water') {
+    //     await valveTogle({ relay: 1, state: false });
+    // }
     res.status(200).json({});
 };
