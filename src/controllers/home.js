@@ -5,6 +5,7 @@ export const homeController = async (req, res) => {
 };
 export const sensorsController = async (req, res) => {
     const { soil_status, light, token, temp } = req.body;
+    console.log(req.body);
     if (token !== authDb.secret) return res.status(403).send('Access denied');
     console.log('Дані з ESP32:', soil_status, light, temp);
     res.status(200).json({});
