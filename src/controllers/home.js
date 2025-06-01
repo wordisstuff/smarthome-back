@@ -13,9 +13,9 @@ export const sensorsController = async (req, res) => {
         soil_status === 'wet' || soil_status === 'in_water',
     );
     if (soil_status === 'dry')
-        return await valveTogle({ raley: 1, state: true });
+        return await valveTogle({ relay: 1, state: true });
     if (soil_status === 'wet' || soil_status === 'in_water')
-        return await valveTogle({ raley: 1, state: false });
+        return await valveTogle({ relay: 1, state: false });
 
     res.status(200).json({});
 };
