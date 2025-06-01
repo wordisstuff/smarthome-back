@@ -8,6 +8,10 @@ export const sensorsController = async (req, res) => {
     console.log(req.body);
     if (token !== authDb.secret) return res.status(403).send('Access denied');
     console.log('Дані з ESP32:', soil_status, light, temp);
+    console.log(
+        soil_status === 'dry',
+        soil_status === 'wet' || soil_status === 'in_water',
+    );
     if (soil_status === 'dry')
         return await valveTogle({ raley: 1, state: true });
     if (soil_status === 'wet' || soil_status === 'in_water')
