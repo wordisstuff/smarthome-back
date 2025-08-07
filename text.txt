@@ -1,0 +1,341 @@
+ws
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include "FS.h"
+#include "SPIFFS.h"
+
+#define uS_TO_S_FACTOR 1000000ULL
+#define WAKE_INTERVAL 30
+#define SEND_INTERVALS 6
+
+#define SOIL_SENSOR_PIN 32
+#define LIGHT_SENSOR_PIN 33
+#define ONE_WIRE_BUS 25
+#define STATUS_LED 2
+#define SENSOR_POWER_PIN 27
+
+const char *ssid = "SALEM";
+const char *password = "W21mongol18M";
+const char *serverUrl = "http://10.0.0.70:8080/home/sensors";
+const char *token = "sisivamnesisi";
+
+RTC_DATA_ATTR int lastLightValue = -1;
+RTC_DATA_ATTR float lastTemp = -100.0;
+RTC_DATA_ATTR String lastSoilStatus = "";
+RTC_DATA_ATTR int wakeCounter = 0;
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+// === Класифікація вологості ===
+String getSoilStatus(int soilValue)
+{
+  if (soilValue > 2600)
+    return "dry";
+  else if (soilValue > 2300)
+    return "wet";
+  else
+    return "in_water";
+}
+
+void logToFile(String logLine)
+{
+  if (!SPIFFS.begin(true))
+  {
+    Serial.println("Помилка SPIFFS");
+    return;
+  }
+
+  File file = SPIFFS.open("/log.txt", FILE_APPEND);
+  if (!file)
+  {
+    Serial.println("Не вдалося відкрити файл");
+    return;
+  }
+
+  file.println(logLine);
+  file.close();
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  delay(100);
+
+  pinMode(STATUS_LED, OUTPUT);
+  digitalWrite(STATUS_LED, HIGH);
+  delay(150);
+  digitalWrite(STATUS_LED, LOW);
+
+  pinMode(SENSOR_POWER_PIN, OUTPUT);
+  delay(500);
+  digitalWrite(SENSOR_POWER_PIN, HIGH);
+  delay(300);
+
+  pinMode(LIGHT_SENSOR_PIN, INPUT);
+  sensors.begin();
+  sensors.requestTemperatures();
+
+  int soil = analogRead(SOIL_SENSOR_PIN);
+  String soilStatus = getSoilStatus(soil);
+  int light = digitalRead(LIGHT_SENSOR_PIN);
+  float tempC = sensors.getTempCByIndex(0);
+
+  digitalWrite(SENSOR_POWER_PIN, LOW);
+
+  if (tempC == DEVICE_DISCONNECTED_C)
+  {
+    tempC = -999.0;
+    logToFile("Температурний сенсор не знайдено!");
+  }
+
+  String logLine = "SoilStatus: " + soilStatus + ", Light: " + String(light) + ", Temp: " + String(tempC);
+  Serial.println(logLine);
+  logToFile(logLine);
+
+  wakeCounter++;
+  logToFile("WakeCounter = " + String(wakeCounter));
+
+  bool dataChanged = (soilStatus != lastSoilStatus ||
+                      light != lastLightValue ||
+                      abs(tempC - lastTemp) > 0.5);
+  bool shouldSend = false;
+
+  bool isFirstRun = (lastSoilStatus == "");
+
+  if (wakeCounter >= SEND_INTERVALS || isFirstRun)
+  {
+    if (dataChanged || isFirstRun)
+    {
+      shouldSend = true;
+      wakeCounter = 0;
+    }
+  }
+
+  if (shouldSend)
+  {
+    WiFi.disconnect(true);
+    delay(2000);
+    WiFi.begin(ssid, password);
+
+    unsigned long startAttemptTime = millis();
+    const unsigned long wifiTimeout = 10000;
+
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < wifiTimeout)
+    {
+      delay(500);
+      Serial.println("Чекаємо на Wi-Fi...");
+    }
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.println("Wi-Fi підключено!");
+      HTTPClient http;
+      http.begin(serverUrl);
+      http.addHeader("Content-Type", "application/json");
+
+      String json = "{\"soil_status\":\"" + soilStatus +
+                    "\",\"light\":" + String(light) +
+                    ",\"temp\":" + String(tempC) +
+                    ",\"token\":\"" + token + "\"}";
+
+      int code = http.POST(json);
+      logToFile("HTTP POST code: " + String(code));
+      http.end();
+      delay(1000);
+      WiFi.disconnect(true);
+
+      lastSoilStatus = soilStatus;
+      lastLightValue = light;
+      lastTemp = tempC;
+    }
+    else
+    {
+      Serial.println("Wi-Fi не підключено.");
+      logToFile("Wi-Fi не підключено");
+    }
+  }
+  else
+  {
+    logToFile("Дані не змінено або ще не час");
+  }
+
+  logToFile("Сон на " + String(WAKE_INTERVAL) + " секунд");
+  esp_sleep_enable_timer_wakeup(WAKE_INTERVAL * uS_TO_S_FACTOR);
+  esp_deep_sleep_start();
+}
+
+void loop() {}
+
+
+poliv
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ArduinoOTA.h>
+#include "esp_task_wdt.h" // watchdog
+
+#define RELAY1_PIN 12
+#define RELAY2_PIN 14
+
+const char *ssid = "SALEM";
+const char *password = "W21mongol18M";
+const String secretToken = "sisivamnesisi";
+
+WebServer server(80);
+
+// Авторизація по токену
+bool isAuthorized()
+{
+  return server.hasArg("token") && server.arg("token") == secretToken;
+}
+
+// Обробка першого реле
+void handleRelay1()
+{
+  if (!isAuthorized())
+  {
+    server.send(401, "text/plain", "Unauthorized");
+    return;
+  }
+
+  if (server.hasArg("state"))
+  {
+    String state = server.arg("state");
+    if (state == "on")
+    {
+      digitalWrite(RELAY1_PIN, HIGH);
+    }
+    else if (state == "off")
+    {
+      digitalWrite(RELAY1_PIN, LOW);
+    }
+    else
+    {
+      server.send(400, "text/plain", "Invalid state");
+      return;
+    }
+  }
+
+  bool status = digitalRead(RELAY1_PIN) == HIGH;
+  server.send(200, "application/json", "{\"relay\":1,\"state\":" + String(status ? "true" : "false") + "}");
+}
+
+// Обробка другого реле
+void handleRelay2()
+{
+  if (!isAuthorized())
+  {
+    server.send(401, "text/plain", "Unauthorized");
+    return;
+  }
+
+  if (server.hasArg("state"))
+  {
+    String state = server.arg("state");
+    if (state == "on")
+    {
+      digitalWrite(RELAY2_PIN, HIGH);
+    }
+    else if (state == "off")
+    {
+      digitalWrite(RELAY2_PIN, LOW);
+    }
+    else
+    {
+      server.send(400, "text/plain", "Invalid state");
+      return;
+    }
+  }
+
+  bool status = digitalRead(RELAY2_PIN) == HIGH;
+  server.send(200, "application/json", "{\"relay\":2,\"state\":" + String(status ? "true" : "false") + "}");
+}
+
+// Загальний статус
+void handleStatus()
+{
+  if (!isAuthorized())
+  {
+    server.send(401, "text/plain", "Unauthorized");
+    return;
+  }
+
+  bool state1 = digitalRead(RELAY1_PIN) == HIGH;
+  bool state2 = digitalRead(RELAY2_PIN) == HIGH;
+
+  String json = "{";
+  json += "\"relay1\":" + String(state1 ? "true" : "false") + ",";
+  json += "\"relay2\":" + String(state2 ? "true" : "false");
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
+
+unsigned long lastWiFiCheck = 0;
+
+void setup()
+{
+  Serial.begin(115200);
+  pinMode(RELAY1_PIN, OUTPUT);
+  pinMode(RELAY2_PIN, OUTPUT);
+  digitalWrite(RELAY1_PIN, LOW);
+  digitalWrite(RELAY2_PIN, LOW);
+
+  // Статична IP-адреса
+  IPAddress local_IP(10, 0, 0, 31);
+  IPAddress gateway(10, 0, 0, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  IPAddress primaryDNS(8, 8, 8, 8);
+  IPAddress secondaryDNS(8, 8, 4, 4);
+  WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("Wi-Fi connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Ініціалізація веб-сервера
+  server.on("/valve1", HTTP_GET, handleRelay1);
+  server.on("/valve2", HTTP_GET, handleRelay2);
+  server.on("/status", HTTP_GET, handleStatus);
+  server.begin();
+  Serial.println("HTTP server started");
+
+  // OTA
+  ArduinoOTA.setHostname("esp32-valves");
+  ArduinoOTA.begin();
+  Serial.println("OTA Ready");
+
+  // Watchdog
+  esp_task_wdt_init(15, true);
+  esp_task_wdt_add(NULL);
+}
+
+void loop()
+{
+  server.handleClient();
+  ArduinoOTA.handle();
+
+  // перевірка Wi-Fi кожні 30 секунд
+  if (millis() - lastWiFiCheck > 30000)
+  {
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.println("Wi-Fi disconnected. Restarting...");
+      ESP.restart();
+    }
+    lastWiFiCheck = millis();
+  }
+
+  esp_task_wdt_reset();
+  delay(10);
+}
