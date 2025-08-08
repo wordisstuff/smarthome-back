@@ -17,9 +17,9 @@ ws
 #define SENSOR_POWER_PIN 27
 
 const char *ssid = "SALEM";
-const char *password = "W21mongol18M";
+const char *password = "";
 const char *serverUrl = "http://10.0.0.70:8080/home/sensors";
-const char *token = "sisivamnesisi";
+const char *token = "";
 
 RTC_DATA_ATTR int lastLightValue = -1;
 RTC_DATA_ATTR float lastTemp = -100.0;
@@ -180,8 +180,8 @@ poliv
 #define RELAY2_PIN 14
 
 const char *ssid = "SALEM";
-const char *password = "W21mongol18M";
-const String secretToken = "sisivamnesisi";
+const char *password = "";
+const String secretToken = "";
 
 WebServer server(80);
 
