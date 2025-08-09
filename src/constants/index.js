@@ -11,8 +11,8 @@ const VARS = {
 export const authDb = {
     port: env(VARS.PORT, 3000),
     secret: env('MY_SYCRET'),
-    // user: env(VARS.USER),
-    // pwd: env(VARS.PASSWORD),
-    // url: env(VARS.URL),
-    // db: env(VARS.DB),
+    user: env(VARS.USER),
+    pwd: env(VARS.PASSWORD),
+    url: env(VARS.URL),
+    db: env(VARS.DB),
 };
