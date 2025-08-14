@@ -1,5 +1,9 @@
 import { env } from '../utils/env.js';
 
+export const FIFTEEN_MINUTES = 900000;
+export const TWO_HOURS = 7200000;
+export const ONE_DAY = 86400000;
+
 const VARS = {
     PORT: 'PORT',
     USER: 'MONGODB_USER',
