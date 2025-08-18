@@ -15,7 +15,7 @@ export const checkDevice = () => {
                 console.error(`stderr: ${stderr}`);
                 return;
             }
-
+            console.log(stdout);
             const foundMac = allowedMacs.find(mac =>
                 stdout.toLowerCase().includes(mac.toLowerCase()),
             );
