@@ -4,7 +4,7 @@ import { authDb } from '../constants/index.js';
 const allowedMacs = authDb.mac;
 export const checkDevice = () => {
     exec(
-        'sudo /smarthome-back/scripts/arp-scan.sh',
+        'sudo /smarthome-back/src/scripts/arp-scan.sh',
         (error, stdout, stderr) => {
             if (error) {
                 console.error(`Помилка: ${error.message}`);
