@@ -47,7 +47,7 @@ export const checkDevice = () => {
                         console.log('✅ Підключено телефон Hennadii');
                         break;
                     case '62:07:5C:44:10:D7':
-                        console.log('✅ Підключено планшет дружини');
+                        console.log('✅ Підключено телефон Alina');
                         break;
                 }
                 console.log(`✅ Доступ дозволено для MAC: ${foundMac}`);
