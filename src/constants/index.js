@@ -19,4 +19,5 @@ export const authDb = {
     pwd: env(VARS.PASSWORD),
     url: env(VARS.URL),
     db: env(VARS.DB),
+    mac: [process.env['MAC_1'], process.env['MAC_2']],
 };
