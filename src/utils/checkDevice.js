@@ -45,7 +45,6 @@ export const checkDevice = () => {
                 switch (foundMac) {
                     case '42:4B:13:10:02:24':
                         console.log('✅ Підключено телефон Hennadii');
-                        break;
                     case '62:07:5C:44:10:D7':
                         console.log('✅ Підключено телефон Alina');
                         break;
