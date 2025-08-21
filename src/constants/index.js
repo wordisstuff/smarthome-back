@@ -20,4 +20,5 @@ export const authDb = {
     url: env(VARS.URL),
     db: env(VARS.DB),
     mac: [process.env['MAC_1'], process.env['MAC_2']],
+    emails:[process.env['EMAIL_1'], process.env['EMAIL_2']]
 };

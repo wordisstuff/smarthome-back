@@ -2,26 +2,19 @@ import Sessions from '../db/models/session.js';
 import User from '../db/models/user.js';
 import gravatar from 'gravatar';
 import bcrypt from 'bcrypt';
+import createSession from '../utils/createSession.js';
 
 export const findUserByEmail = email => User.findOne({ email });
 
 export const registerUser = async data => {
-    const { email } = data;
+    const aceptedEmails = authDb.emails
+    const { email} = data;
+
+    if (!aceptedEmails.some(email) ) throw createHttpError(401, 'Unauthorized');
+    
     const user = await findUserByEmail(email);
     if (user) throw createHttpError(409, 'Email in use!');
-    // const verifyToken = v4();
-    // const html = templateMaker({
-    //     name: email,
-    //     link: `${serverUrl}/auth/verify/${verifyToken}`,
-    // });
-
-    // await sendEmail({
-    //     from: smtp.from,
-    //     to: email,
-    //     subject: 'Verify your password',
-    //     html,
-    // });
-
+   
     const hashedPassword = await bcrypt.hash(userData.password, 10);
     const photoUrl = gravatar.url(userData.email);
     return await User.create({
@@ -45,4 +38,8 @@ export const signinUser = async data => {
     console.log('newSession', newSession);
 
     return { user, session: newSession };
+};
+
+export const logoutUser = sessionId => {
+    return Sessions.deleteOne({ _id: sessionId });
 };
