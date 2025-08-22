@@ -1,3 +1,4 @@
+import { serializeUser } from "../db/models/user.js";
 import { logoutUser, signinUser } from "../services/auth.js";
 
 export const registerUserController = async (req, res) => {
@@ -5,7 +6,7 @@ export const registerUserController = async (req, res) => {
     res.status(201).json({
         status: 201,
         message:
-            'User registered! Please check your email to confirm your registration!',
+            'User registered!',
         data: { user: serializeUser(user) },
     });
 };

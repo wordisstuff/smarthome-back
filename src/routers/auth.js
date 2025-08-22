@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { jsonParser } from '../constants/constants.js';
 import { loginUserSchema } from '../validation/auth.js';
 import { ctrlWrapper } from '../utils/ctrlWrapper.js';
-import { signinUserController } from '../controllers/auth.js';
+import { logoutUserController, registerUserController, signinUserController } from '../controllers/auth.js';
 
 const router = Router();
 

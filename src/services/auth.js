@@ -8,19 +8,18 @@ export const findUserByEmail = email => User.findOne({ email });
 
 export const registerUser = async data => {
     const aceptedEmails = authDb.emails
-    const { email} = data;
+    const { email,password} = data;
 
     if (!aceptedEmails.some(email) ) throw createHttpError(401, 'Unauthorized');
     
     const user = await findUserByEmail(email);
     if (user) throw createHttpError(409, 'Email in use!');
    
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const photoUrl = gravatar.url(userData.email);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const photoUrl = gravatar.url(email);
     return await User.create({
-        ...userData,
+        ...data,
         password: hashedPassword,
-        verifyToken,
         photo: photoUrl,
     });
 };
@@ -34,7 +33,7 @@ export const signinUser = async data => {
 
     await Sessions.deleteOne({ userId: user._id });
 
-    const newSession = await createSession(user._id, user.verifyByEmail);
+    const newSession = await createSession(user._id);
     console.log('newSession', newSession);
 
     return { user, session: newSession };
