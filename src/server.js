@@ -13,8 +13,7 @@ export const setupServer = () => {
     const app = express();
 
     app.use(pino(pinoSettings));
-    const allowedOrigins = ['http://localhost:5173', 'http://10.0.0.70:5173'];
-
+    const allowedOrigins = authDb.frontendUrls;
     app.use(
         cors({
             origin: function (origin, callback) {

@@ -1,5 +1,6 @@
 import { authDb } from '../constants/index.js';
 import { valveTogle } from '../services/valves.js';
+import { getTrustedDeviceInfo, checkDevice } from '../utils/checkDevice.js';
 
 export const homeController = async (req, res) => {
     res.status(200).json({});
@@ -20,4 +21,14 @@ export const sensorsController = async (req, res) => {
         await valveTogle({ relay: 1, state: false });
     }
     res.status(200).json({});
+};
+
+export const trustedDeviceController = async (req, res) => {
+    await checkDevice();
+
+    res.status(200).json({
+        status: 200,
+        message: 'Trusted device status',
+        data: getTrustedDeviceInfo(),
+    });
 };

@@ -1,73 +1,84 @@
 import { exec } from 'child_process';
 import { authDb } from '../constants/index.js';
+import path from 'path';
 
-const allowedMacs = authDb.mac;
+const allowedMacs = authDb.mac.filter(Boolean);
+const scriptPath = path.join(process.cwd(), 'src/scripts/arp-scan.sh');
 
-export const checkDevice = () => {
-    exec(
-        'sudo /smarthome-back/src/scripts/arp-scan.sh',
-        (error, stdout, stderr) => {
+let cachedResult = false;
+let cachedMac = null;
+let lastCheckedAt = 0;
+
+const CACHE_TIME = 30 * 1000;
+
+const scanDevices = () => {
+    return new Promise(resolve => {
+        exec(`sudo ${scriptPath}`, (error, stdout, stderr) => {
             if (error) {
                 console.error(`❌ Помилка: ${error.message}`);
-                return;
+                return resolve({ isTrusted: false, mac: null });
             }
 
             if (stderr) {
                 console.error(`⚠️ stderr: ${stderr}`);
-                // Не return, бо arp-scan іноді в stderr лише warning’и
             }
 
-            // 🔍 Розбираємо stdout на рядки
-            const lines = stdout.split('\n');
-
-            // 📦 Масив MAC-адрес
-            const detectedMacs = [];
-
-            for (const line of lines) {
-                // Шукаємо рядки, які містять IP і MAC
-                const match = line.match(
-                    /^(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F:]{17})/,
+            const detectedMacs = stdout
+                .split('\n')
+                .map(line =>
+                    line.match(/([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}/),
+                )
+                .filter(Boolean)
+                .map(match =>
+                    match[0]
+                        .split(':')
+                        .map(part => part.padStart(2, '0'))
+                        .join(':')
+                        .toUpperCase(),
                 );
-                if (match) {
-                    const mac = match[2].toUpperCase();
-                    detectedMacs.push(mac);
-                }
-            }
 
             console.log('🔍 Знайдені MAC-адреси:', detectedMacs);
 
-            // ✅ Перевірка, чи є хоч один із дозволених MAC
             const foundMac = detectedMacs.find(mac =>
                 allowedMacs.some(allowed => allowed.toUpperCase() === mac),
             );
 
-            if (foundMac) {
-                switch (foundMac) {
-                    case '42:4B:13:10:02:24':
-                        console.log('✅ Підключено телефон Hennadii');
-                    case '62:07:5C:44:10:D7':
-                        console.log('✅ Підключено телефон Alina');
-                        break;
-                }
-                console.log(`✅ Доступ дозволено для MAC: ${foundMac}`);
-            } else {
+            if (!foundMac) {
                 console.log('❌ Жоден з дозволених MAC не знайдено.');
+                return resolve({ isTrusted: false, mac: null });
             }
-        },
-    );
+
+            console.log(`✅ Доступ дозволено для MAC: ${foundMac}`);
+
+            resolve({ isTrusted: true, mac: foundMac });
+        });
+    });
 };
-// const { exec } = require('child_process');
 
-// // Список дозволених MAC-адрес (нижній регістр!)
+export const checkDevice = async () => {
+    const now = Date.now();
 
-// // Функція перевірки присутності хоча б одного пристрою
-// function checkForDevices() {}
+    if (now - lastCheckedAt < CACHE_TIME) {
+        console.log(
+            `⚡ Trusted device cache: ${cachedResult ? 'allowed' : 'blocked'}`,
+        );
 
-// // Функція для відкриття клапана (або будь-якої іншої дії)
-// function openValve() {
-//     console.log('🚰 Відкриваємо клапан...');
-//     // Тут твоя логіка — HTTP-запит до ESP32, зміна GPIO, тощо
-// }
+        return cachedResult;
+    }
 
-// // Перевірка кожну хвилину
-// setInterval(checkForDevices, 60 * 1000);
+    const result = await scanDevices();
+
+    cachedResult = result.isTrusted;
+    cachedMac = result.mac;
+    lastCheckedAt = now;
+
+    return cachedResult;
+};
+
+export const getTrustedDeviceInfo = () => {
+    return {
+        isTrusted: cachedResult,
+        mac: cachedMac,
+        lastCheckedAt,
+    };
+};

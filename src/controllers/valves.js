@@ -1,4 +1,5 @@
 import { valveStatus, valveTogle } from '../services/valves.js';
+import WateringSession from '../db/models/wateringSession.js';
 
 const activeTimers = new Map();
 
@@ -9,7 +10,15 @@ export const valveController = async (req, res) => {
 
 export const valveStatusController = async (req, res) => {
     const { data } = await valveStatus();
-    res.status(200).json({ data });
+
+    const activeSessions = await WateringSession.find({
+        status: 'active',
+    });
+
+    res.status(200).json({
+        data,
+        activeSessions,
+    });
 };
 
 export const valveTimerController = async (req, res) => {
@@ -31,11 +40,36 @@ export const valveTimerController = async (req, res) => {
         clearTimeout(activeTimers.get(relay));
     }
 
+    await WateringSession.updateMany(
+        { relay, status: 'active' },
+        {
+            status: 'stopped',
+            stoppedAt: new Date(),
+        },
+    );
+
+    const startedAt = new Date();
+    const endsAt = new Date(startedAt.getTime() + Number(minutes) * 60 * 1000);
+
+    const session = await WateringSession.create({
+        relay,
+        durationMinutes: Number(minutes),
+        startedAt,
+        endsAt,
+        status: 'active',
+    });
+
     await valveTogle({ relay, state: true });
 
     const timerId = setTimeout(
         async () => {
             await valveTogle({ relay, state: false });
+
+            await WateringSession.findByIdAndUpdate(session._id, {
+                status: 'completed',
+                stoppedAt: new Date(),
+            });
+
             activeTimers.delete(relay);
         },
         Number(minutes) * 60 * 1000,
@@ -47,8 +81,11 @@ export const valveTimerController = async (req, res) => {
         message: `Valve ${relay} started for ${minutes} minutes`,
         data: {
             relay,
-            minutes,
+            minutes: Number(minutes),
             state: true,
+            sessionId: session._id,
+            startedAt,
+            endsAt,
         },
     });
 };
@@ -67,8 +104,20 @@ export const valveStopController = async (req, res) => {
 
     const { data } = await valveTogle({ relay, state: false });
 
+    await WateringSession.updateMany(
+        { relay, status: 'active' },
+        {
+            status: 'stopped',
+            stoppedAt: new Date(),
+        },
+    );
+
     res.status(200).json({
         message: `Valve ${relay} stopped`,
-        data,
+        data: {
+            relay,
+            state: false,
+            esp: data,
+        },
     });
 };
