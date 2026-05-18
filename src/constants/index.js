@@ -25,8 +25,5 @@ export const authDb = {
         process.env['EMAIL_2'],
         process.env['EMAIL_3'],
     ],
-    frontendUrls: [
-        process.env['FRONTEND_URL_1'],
-        process.env['FRONTEND_URL_2'],
-    ],
+    frontendUrls: process.env['FRONTEND_URL'],
 };
